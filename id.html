@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prohor ID - Identity Dashboard</title>
+    
+    <!-- Tailwind CSS v4 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        /* Minimalist Scrollbar */
+        ::-webkit-scrollbar { width: 0px; height: 0px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Apple-esque Typography */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Loading Spinners */
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin 1s linear infinite; }
+        
+        /* Base states for Motion */
+        .page-view { display: none; }
+        .stagger-item { opacity: 0; }
+
+        /* iOS style grouped list lines */
+        .ios-list > div:not(:last-child) {
+            border-bottom: 1px solid var(--border-color, #e5e5ea);
+        }
+        .dark .ios-list > div:not(:last-child) {
+            --border-color: #2c2c2e;
+        }
+
+        /* Sidebar Transition */
+        #sidebar { transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .sidebar-collapsed { width: 80px !important; }
+        .sidebar-collapsed .hide-on-collapse { opacity: 0; display: none; }
+        .sidebar-collapsed .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+        .sidebar-collapsed .nav-icon { margin: 0; font-size: 26px !important; }
+        .sidebar-collapsed .profile-avatar { width: 36px; height: 36px; margin: 0 auto; }
+        .sidebar-collapsed #collapse-btn { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-[#F2F2F7] dark:bg-[#000000] text-[#1C1C1E] dark:text-[#F2F2F7] flex h-screen overflow-hidden selection:bg-indigo-500/30 transition-colors duration-300">
+
+    <!-- Mobile Header -->
+    <div class="md:hidden flex items-center justify-between p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-[#F2F2F7]/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl absolute top-0 left-0 right-0 z-40">
+        <button id="mobile-menu-btn" class="p-2 -ml-2 text-zinc-600 dark:text-zinc-300 active:scale-95 transition-transform">
+            <i class="ph ph-list text-2xl"></i>
+        </button>
+        <a href="#" class="flex items-center gap-2 font-semibold text-lg tracking-tight">
+            <div class="w-6 h-6 bg-indigo-500 text-white rounded-[6px] flex items-center justify-center">
+                <i class="ph-bold ph-shield-check text-[13px]"></i>
+            </div>
+            Prohor
+        </a>
+        <button class="p-2 -mr-2 text-zinc-600 dark:text-zinc-300 active:scale-95 transition-transform relative">
+            <i class="ph ph-bell text-2xl"></i>
+            <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#F2F2F7] dark:border-[#1C1C1E]"></span>
+        </button>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-[260px] lg:w-[280px] h-full border-r border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-[#1C1C1E]/60 backdrop-blur-3xl flex flex-col justify-between shrink-0 fixed md:relative z-50 transform -translate-x-full md:translate-x-0">
+        
+        <div class="flex-1 flex flex-col overflow-y-auto no-scrollbar relative">
+            
+            <!-- Animated Active Indicator -->
+            <div id="active-indicator" class="absolute left-1 w-1 bg-indigo-500 rounded-full transition-all duration-300 ease-out z-10" style="height: 0; top: 0;"></div>
+
+            <!-- Logo -->
+            <div class="p-5 pb-2 flex items-center justify-between">
+                <a href="#" class="flex items-center gap-3 font-semibold text-[17px] tracking-tight hover:opacity-80 transition-opacity hide-on-collapse">
+                    <div class="w-7 h-7 bg-indigo-500 text-white rounded-[8px] flex items-center justify-center shadow-sm shrink-0">
+                        <i class="ph-bold ph-shield-check text-sm"></i>
+                    </div>
+                    Prohor ID
+                </a>
+                <div class="w-7 h-7 bg-indigo-500 text-white rounded-[8px] flex items-center justify-center shadow-sm shrink-0 hidden" id="logo-icon-only">
+                    <i class="ph-bold ph-shield-check text-sm"></i>
+                </div>
+                <button id="close-mobile-menu" class="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors md:hidden">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Collapse Button -->
+            <div class="px-4 mb-4 mt-2 hidden md:block">
+                <button id="collapse-btn" class="flex items-center gap-2 px-2 py-1 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 w-full">
+                    <i class="ph ph-sidebar-simple text-base shrink-0 transition-transform duration-300"></i> 
+                    <span class="hide-on-collapse">Collapse Menu</span>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="px-3 space-y-1 relative" id="nav-menu">
+                <p class="px-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 mt-2 hide-on-collapse">Manage</p>
+                
+                <a href="#" data-page="overview" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium text-[15px] transition-colors group">
+                    <i class="ph ph-squares-four text-[22px] group-hover:scale-110 transition-transform nav-icon shrink-0"></i> 
+                    <span class="hide-on-collapse">Overview</span>
+                </a>
+                
+                <a href="#" data-page="integrations" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium text-[15px] transition-colors group">
+                    <i class="ph ph-plugs-connected text-[22px] group-hover:scale-110 transition-transform nav-icon shrink-0"></i> 
+                    <span class="hide-on-collapse">Integrations</span>
+                    <div id="badge-integrations" class="hide-on-collapse ml-auto bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-300 text-[11px] font-semibold py-0.5 px-2 rounded-full">3</div>
+                </a>
+                
+                <a href="#" data-page="security" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium text-[15px] transition-colors group">
+                    <i class="ph ph-shield-check text-[22px] group-hover:scale-110 transition-transform nav-icon shrink-0"></i> 
+                    <span class="hide-on-collapse">Security</span>
+                </a>
+                
+                <a href="#" data-page="sessions" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium text-[15px] transition-colors group">
+                    <i class="ph ph-devices text-[22px] group-hover:scale-110 transition-transform nav-icon shrink-0"></i> 
+                    <span class="hide-on-collapse">Sessions</span>
+                    <div id="badge-sessions" class="hide-on-collapse ml-auto bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-300 text-[11px] font-semibold py-0.5 px-2 rounded-full">2</div>
+                </a>
+
+                <a href="#" data-page="activity" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium text-[15px] transition-colors group">
+                    <i class="ph ph-clock-counter-clockwise text-[22px] group-hover:scale-110 transition-transform nav-icon shrink-0"></i> 
+                    <span class="hide-on-collapse">Activity Log</span>
+                </a>
+
+                <p class="px-3 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2 mt-6 hide-on-collapse">Preferences</p>
+                
+                <a href="#" data-page="settings" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium text-[15px] transition-colors group">
+                    <i class="ph ph-gear text-[22px] group-hover:scale-110 transition-transform nav-icon shrink-0"></i> 
+                    <span class="hide-on-collapse">Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Lower Section (Profile) -->
+        <div class="p-4 pb-6 flex flex-col gap-3 border-t border-zinc-200/80 dark:border-zinc-800/80">
+            <div class="flex items-center gap-3 px-2">
+                <img src="https://avatars.githubusercontent.com/u/131578101?v=4" alt="FrostFoe" class="profile-avatar w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-700 object-cover shadow-sm transition-all duration-300 shrink-0">
+                <div class="flex-1 min-w-0 hide-on-collapse">
+                    <p class="text-sm font-semibold truncate">FrostFoe</p>
+                    <p class="text-[11px] text-zinc-500 truncate">frostfoe@gmail.com</p>
+                </div>
+            </div>
+
+            <div class="flex gap-2 hide-on-collapse">
+                <button id="theme-toggle" class="flex-1 flex justify-center items-center py-2 rounded-[10px] bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-300 transition-colors shadow-sm active:scale-95" title="Toggle Theme">
+                    <i id="theme-icon" class="ph-fill ph-moon text-base"></i>
+                </button>
+                <button class="flex-1 flex justify-center items-center py-2 rounded-[10px] bg-zinc-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 text-zinc-600 dark:text-zinc-300 transition-colors shadow-sm active:scale-95" title="Sign Out">
+                    <i class="ph-bold ph-sign-out text-base"></i>
+                </button>
+            </div>
+            
+            <div class="text-center pt-2 hide-on-collapse">
+                <p id="live-time" class="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest"></p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/40 z-40 hidden backdrop-blur-sm opacity-0 md:hidden"></div>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto relative pt-16 md:pt-0 scroll-smooth">
+        <div class="max-w-4xl mx-auto p-5 md:p-8 lg:p-12 pb-24 min-h-full flex flex-col">
+            
+            <!-- Dynamic Page Title -->
+            <div class="mb-8 md:mb-10 max-w-2xl shrink-0">
+                <h1 id="page-title" class="text-[28px] md:text-4xl font-bold leading-tight tracking-tight mb-2">
+                    Identity Overview
+                </h1>
+                <p id="page-subtitle" class="text-zinc-500 dark:text-zinc-400 text-[15px]">
+                    Manage your personal information, security settings, and connected applications.
+                </p>
+            </div>
+
+            <!-- PAGES CONTAINER -->
+            <div id="pages-container" class="relative flex-1">
+
+                <!-- 1. OVERVIEW PAGE -->
+                <div id="page-overview" class="page-view">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Profile Card -->
+                        <div class="stagger-item rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] group">
+                            <div class="h-24 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-90"></div>
+                            <div class="p-6 relative">
+                                <div class="absolute -top-10 left-6">
+                                    <div class="w-[76px] h-[76px] rounded-full bg-white dark:bg-[#1C1C1E] p-1.5 shadow-md">
+                                        <img src="https://avatars.githubusercontent.com/u/131578101?v=4" class="w-full h-full rounded-full object-cover">
+                                    </div>
+                                    <div class="absolute bottom-1.5 right-1.5 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#1C1C1E] rounded-full shadow-sm"></div>
+                                </div>
+                                
+                                <div class="mt-10">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <h2 class="text-2xl font-bold tracking-tight">FrostFoe</h2>
+                                        <i class="ph-fill ph-seal-check text-indigo-500 text-xl"></i>
+                                    </div>
+                                    <p class="text-[13px] font-semibold text-zinc-500 uppercase tracking-widest mb-6">@frostfoe</p>
+                                    
+                                    <div class="space-y-3 mb-6 ios-list">
+                                        <div class="flex items-center justify-between py-3">
+                                            <span class="text-[15px] text-zinc-500 flex items-center gap-3"><i class="ph-fill ph-envelope text-lg text-zinc-400"></i> Email</span>
+                                            <span class="text-[15px] font-medium truncate max-w-[150px]">frostfoe@gmail.com</span>
+                                        </div>
+                                        <div class="flex items-center justify-between py-3">
+                                            <span class="text-[15px] text-zinc-500 flex items-center gap-3"><i class="ph-fill ph-fingerprint text-lg text-zinc-400"></i> ID</span>
+                                            <span class="text-[13px] font-mono text-zinc-500 bg-zinc-100 dark:bg-white/10 px-2 py-1 rounded-[8px]">usr_8x92aB1</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats & Actions -->
+                        <div class="flex flex-col gap-6">
+                            <!-- Security Status -->
+                            <div class="stagger-item rounded-[24px] border border-orange-200/50 dark:border-orange-900/30 bg-orange-50/80 dark:bg-[#2A1D18]/80 backdrop-blur-xl p-6 shadow-sm flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 flex items-center justify-center shrink-0">
+                                    <i class="ph-fill ph-warning-circle text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-[15px] font-bold text-orange-800 dark:text-orange-500 mb-1">Enable Passkeys</h4>
+                                    <p class="text-[13px] text-orange-700/80 dark:text-orange-400/80 mb-3 leading-relaxed">Upgrade your account security by enabling FaceID or TouchID.</p>
+                                    <button class="text-[13px] font-bold text-orange-800 dark:text-orange-400 hover:underline" onclick="window.switchPage('security')">Set up now &rarr;</button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Stat 1 -->
+                                <div class="stagger-item rounded-[20px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-5 shadow-sm cursor-pointer hover:scale-[1.02] transition-transform" onclick="window.switchPage('integrations')">
+                                    <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+                                        <i class="ph-fill ph-plugs-connected text-xl"></i>
+                                    </div>
+                                    <h3 class="text-2xl font-bold mb-0.5">3</h3>
+                                    <p class="text-[13px] font-medium text-zinc-500">Integrations</p>
+                                </div>
+
+                                <!-- Stat 2 -->
+                                <div class="stagger-item rounded-[20px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-5 shadow-sm cursor-pointer hover:scale-[1.02] transition-transform" onclick="window.switchPage('sessions')">
+                                    <div class="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+                                        <i class="ph-fill ph-devices text-xl"></i>
+                                    </div>
+                                    <h3 id="dash-session-count" class="text-2xl font-bold mb-0.5">2</h3>
+                                    <p class="text-[13px] font-medium text-zinc-500">Sessions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. INTEGRATIONS PAGE -->
+                <div id="page-integrations" class="page-view">
+                    <div class="stagger-item rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl shadow-sm overflow-hidden flex flex-col p-2">
+                        <div class="ios-list px-2">
+                            <!-- Google -->
+                            <div class="py-4 flex items-center justify-between group">
+                                <div class="flex items-center gap-4 overflow-hidden">
+                                    <div class="w-12 h-12 rounded-[14px] border border-zinc-200/50 dark:border-white/10 bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                        <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.27.81-.57z"></path><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">Google</p>
+                                        <p class="text-[13px] text-zinc-500 status-text">Not linked</p>
+                                    </div>
+                                </div>
+                                <button class="btn-connect px-5 py-2 rounded-full text-[13px] font-bold bg-zinc-100 dark:bg-white/10 text-indigo-600 dark:text-indigo-400 hover:bg-zinc-200 dark:hover:bg-white/20 transition-all min-w-[90px]" data-provider="Google"><span class="btn-text">Connect</span></button>
+                            </div>
+                            
+                            <!-- GitHub -->
+                            <div class="py-4 flex items-center justify-between group">
+                                <div class="flex items-center gap-4 overflow-hidden">
+                                    <div class="w-12 h-12 rounded-[14px] bg-[#24292f] flex items-center justify-center shrink-0 shadow-sm">
+                                        <i class="ph-fill ph-github-logo text-white text-[26px]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">GitHub</p>
+                                        <p class="text-[13px] text-zinc-500 status-text">Connected as @frostfoe</p>
+                                    </div>
+                                </div>
+                                <button class="btn-connect connected-state px-5 py-2 rounded-full text-[13px] font-bold bg-zinc-100 dark:bg-white/10 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-all min-w-[100px]" data-provider="GitHub"><span class="btn-text">Disconnect</span></button>
+                            </div>
+
+                            <!-- GitLab -->
+                            <div class="py-4 flex items-center justify-between group">
+                                <div class="flex items-center gap-4 overflow-hidden">
+                                    <div class="w-12 h-12 rounded-[14px] border border-zinc-200/50 dark:border-white/10 bg-white flex items-center justify-center shrink-0 shadow-sm">
+                                        <i class="ph-fill ph-gitlab-logo text-[#e24329] text-[26px]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">GitLab</p>
+                                        <p class="text-[13px] text-zinc-500 status-text">Connected</p>
+                                    </div>
+                                </div>
+                                <button class="btn-connect connected-state px-5 py-2 rounded-full text-[13px] font-bold bg-zinc-100 dark:bg-white/10 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-all min-w-[100px]" data-provider="GitLab"><span class="btn-text">Disconnect</span></button>
+                            </div>
+
+                            <!-- Figma -->
+                            <div class="py-4 flex items-center justify-between group">
+                                <div class="flex items-center gap-4 overflow-hidden">
+                                    <div class="w-12 h-12 rounded-[14px] border border-zinc-200/50 dark:border-white/10 bg-black dark:bg-[#1E1E1E] flex items-center justify-center shrink-0 shadow-sm">
+                                        <i class="ph-fill ph-figma-logo text-white text-[26px]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[16px] font-semibold text-zinc-900 dark:text-zinc-100 mb-0.5">Figma</p>
+                                        <p class="text-[13px] text-zinc-500 status-text">Connected</p>
+                                    </div>
+                                </div>
+                                <button class="btn-connect connected-state px-5 py-2 rounded-full text-[13px] font-bold bg-zinc-100 dark:bg-white/10 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-all min-w-[100px]" data-provider="Figma"><span class="btn-text">Disconnect</span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. SECURITY PAGE -->
+                <div id="page-security" class="page-view">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <div class="space-y-6">
+                            <!-- Passkeys Card -->
+                            <div class="stagger-item rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-6 shadow-sm">
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 flex items-center justify-center shrink-0">
+                                        <i class="ph-fill ph-face-id text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-[16px] font-semibold">Passkeys</h3>
+                                        <p class="text-[13px] text-zinc-500">Sign in with biometrics</p>
+                                    </div>
+                                </div>
+                                <button class="w-full py-3 rounded-[14px] font-semibold text-[14px] bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+                                    <i class="ph-bold ph-plus"></i> Add Passkey
+                                </button>
+                            </div>
+
+                            <!-- Authenticator Card -->
+                            <div class="stagger-item delay-100 rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-6 shadow-sm">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shrink-0">
+                                            <i class="ph-fill ph-device-mobile text-xl"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-[16px] font-semibold">Authenticator App</h3>
+                                            <p class="text-[13px] text-zinc-500">TOTP (Google Auth, Authy)</p>
+                                        </div>
+                                    </div>
+                                    <!-- iOS Toggle -->
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="toggle-2fa" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-zinc-200 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                    </label>
+                                </div>
+                                
+                                <!-- Hidden Recovery Codes -->
+                                <div id="recovery-codes" class="mt-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50 hidden">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="text-[13px] font-semibold">Recovery Codes</h4>
+                                        <button class="text-indigo-500 text-[13px] font-medium" onclick="window.showToast('Codes downloaded', 'success')">Download</button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 text-center font-mono text-[12px] tracking-widest text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-[#141416] p-3 rounded-[12px] border border-black/5 dark:border-white/5">
+                                        <p>A7X9-B2M4</p>
+                                        <p>K3L1-Z8P9</p>
+                                        <p>Q9R4-T5Y2</p>
+                                        <p>W6E8-N1C7</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Change Password Form -->
+                        <div class="stagger-item delay-200 rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-6 shadow-sm">
+                            <h3 class="text-[18px] font-bold mb-5">Change Password</h3>
+                            <form class="space-y-4" onsubmit="event.preventDefault(); window.showToast('Password updated securely'); this.reset(); document.getElementById('pwd-meter').style.width='0';">
+                                <div>
+                                    <label class="block text-[13px] font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">Current Password</label>
+                                    <input type="password" required class="w-full px-4 py-3 rounded-[14px] bg-zinc-100/50 dark:bg-[#000000]/50 border border-zinc-200/50 dark:border-white/5 text-[15px] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-zinc-400">
+                                </div>
+                                <div>
+                                    <label class="block text-[13px] font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">New Password</label>
+                                    <input type="password" id="new-password" required class="w-full px-4 py-3 rounded-[14px] bg-zinc-100/50 dark:bg-[#000000]/50 border border-zinc-200/50 dark:border-white/5 text-[15px] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-zinc-400">
+                                    
+                                    <!-- Password Strength Meter -->
+                                    <div class="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full mt-3 overflow-hidden">
+                                        <div id="pwd-meter" class="h-full bg-red-500 transition-all duration-300 w-0"></div>
+                                    </div>
+                                    <p id="pwd-text" class="text-[11px] text-zinc-500 mt-1.5">Use 8+ characters, a mix of letters, numbers & symbols.</p>
+                                </div>
+                                <button type="submit" class="mt-4 w-full py-3 px-4 rounded-[14px] font-semibold text-[14px] bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm active:scale-[0.98] transition-transform">
+                                    Update Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SESSIONS PAGE -->
+                <div id="page-sessions" class="page-view">
+                    <!-- Empty State (Hidden initially) -->
+                    <div id="sessions-empty" class="hidden flex-col items-center justify-center py-16 text-center">
+                        <div class="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
+                            <i class="ph-fill ph-shield-check text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">No other active sessions</h3>
+                        <p class="text-[15px] text-zinc-500 max-w-sm">You're only signed in on this current device. Your account is secure.</p>
+                    </div>
+
+                    <div id="sessions-list-container" class="stagger-item rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl shadow-sm overflow-hidden flex flex-col p-2">
+                        <div class="px-4 py-3 flex justify-end">
+                            <button id="btn-revoke-all" class="text-[13px] font-semibold text-red-500 hover:text-red-600 transition-colors">
+                                Revoke all other devices
+                            </button>
+                        </div>
+                        
+                        <div class="ios-list px-2" id="sessions-container">
+                            <!-- Current -->
+                            <div class="py-4 flex flex-col sm:flex-row sm:items-center gap-4 group">
+                                <div class="flex items-center gap-4 flex-1 min-w-0">
+                                    <div class="w-12 h-12 rounded-[14px] bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 flex items-center justify-center shrink-0">
+                                        <i class="ph-fill ph-laptop text-[24px]"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-0.5">
+                                            <p class="text-[16px] font-semibold truncate">Mac OS 14.1</p>
+                                            <span class="px-2 py-[2px] rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-300 uppercase tracking-wider">Current Device</span>
+                                        </div>
+                                        <p class="text-[13px] text-zinc-500 truncate">Chrome 119 • Dhaka, BD</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Mobile Session -->
+                            <div class="session-item py-4 flex flex-col sm:flex-row sm:items-center gap-4 group overflow-hidden origin-top">
+                                <div class="flex items-center gap-4 flex-1 min-w-0">
+                                    <div class="w-12 h-12 rounded-[14px] bg-zinc-100 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 flex items-center justify-center shrink-0">
+                                        <i class="ph-fill ph-device-mobile text-[24px]"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[16px] font-semibold mb-0.5 truncate">iPhone 13 Pro</p>
+                                        <p class="text-[13px] text-zinc-500 truncate">Safari • Dhaka, BD • Active 2h ago</p>
+                                    </div>
+                                </div>
+                                <button class="btn-revoke px-4 py-2 rounded-full text-[13px] font-bold bg-zinc-100 dark:bg-white/10 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-1.5">
+                                    <i class="ph-bold ph-minus-circle text-[16px]"></i> <span>Revoke</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. ACTIVITY LOG -->
+                <div id="page-activity" class="page-view">
+                    <div class="stagger-item rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-6 md:p-8 shadow-sm">
+                        
+                        <div class="relative border-l-2 border-zinc-200 dark:border-zinc-800 ml-4 space-y-8 pb-4 mt-2">
+                            <!-- Event 1 -->
+                            <div class="relative pl-6 sm:pl-8">
+                                <div class="absolute w-4 h-4 bg-emerald-500 rounded-full -left-[9px] top-1 border-4 border-white dark:border-[#1C1C1E]"></div>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                    <p class="text-[15px] font-bold text-zinc-900 dark:text-zinc-100">Logged in successfully</p>
+                                    <p class="text-[12px] font-medium text-zinc-500">Today, 10:45 AM</p>
+                                </div>
+                                <p class="text-[13px] text-zinc-500">Mac OS • Chrome • IP: 103.45.12.88</p>
+                            </div>
+                            
+                            <!-- Event 2 -->
+                            <div class="relative pl-6 sm:pl-8">
+                                <div class="absolute w-4 h-4 bg-indigo-500 rounded-full -left-[9px] top-1 border-4 border-white dark:border-[#1C1C1E]"></div>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                    <p class="text-[15px] font-bold text-zinc-900 dark:text-zinc-100">Connected Integration</p>
+                                    <p class="text-[12px] font-medium text-zinc-500">Yesterday, 04:20 PM</p>
+                                </div>
+                                <p class="text-[13px] text-zinc-500">GitHub account (@frostfoe) was linked.</p>
+                            </div>
+
+                            <!-- Event 3 -->
+                            <div class="relative pl-6 sm:pl-8">
+                                <div class="absolute w-4 h-4 bg-zinc-300 dark:bg-zinc-600 rounded-full -left-[9px] top-1 border-4 border-white dark:border-[#1C1C1E]"></div>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                    <p class="text-[15px] font-bold text-zinc-900 dark:text-zinc-100">Password Changed</p>
+                                    <p class="text-[12px] font-medium text-zinc-500">Mar 12, 2026</p>
+                                </div>
+                                <p class="text-[13px] text-zinc-500">Password was successfully updated from iPhone 13 Pro.</p>
+                            </div>
+
+                            <!-- Event 4 -->
+                            <div class="relative pl-6 sm:pl-8">
+                                <div class="absolute w-4 h-4 bg-red-500 rounded-full -left-[9px] top-1 border-4 border-white dark:border-[#1C1C1E]"></div>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                                    <p class="text-[15px] font-bold text-zinc-900 dark:text-zinc-100">Failed Login Attempt</p>
+                                    <p class="text-[12px] font-medium text-zinc-500">Mar 10, 2026</p>
+                                </div>
+                                <p class="text-[13px] text-zinc-500">Incorrect password entered from unknown IP (45.22.11.9).</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 6. SETTINGS PAGE -->
+                <div id="page-settings" class="page-view">
+                    <div class="max-w-3xl space-y-6">
+                        
+                        <!-- Data Export -->
+                        <div class="stagger-item rounded-[24px] border border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="text-[16px] font-bold mb-1">Export Data</h3>
+                                <p class="text-[13px] text-zinc-500 max-w-sm leading-relaxed">Download a copy of all your personal data stored on our servers in JSON format.</p>
+                            </div>
+                            <button class="shrink-0 px-5 py-2.5 rounded-full font-bold text-[13px] bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-white/20 transition-all flex items-center justify-center gap-2 active:scale-95" onclick="window.showToast('Data export started. We will email you shortly.', 'info')">
+                                <i class="ph-bold ph-download-simple text-lg"></i> Request Archive
+                            </button>
+                        </div>
+
+                        <!-- Danger Zone -->
+                        <div class="stagger-item delay-100 rounded-[24px] border border-red-200/50 dark:border-red-900/30 bg-red-50/50 dark:bg-[#2A1515]/50 backdrop-blur-xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="font-bold text-[16px] text-red-600 dark:text-red-500 mb-1">Delete Account</h3>
+                                <p class="text-[13px] text-red-600/80 dark:text-red-400/80 max-w-sm leading-relaxed">Permanently remove your personal account and all associated data. This action cannot be undone.</p>
+                            </div>
+                            <button id="btn-delete" class="shrink-0 px-5 py-2.5 rounded-full font-bold text-[13px] bg-red-500 text-white hover:bg-red-600 transition-all flex items-center justify-center gap-2 w-full sm:w-auto active:scale-95 shadow-md shadow-red-500/20">
+                                <i class="ph-bold ph-trash text-lg"></i> Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-0 left-0 flex flex-col items-center gap-3 w-full z-50 pointer-events-none px-4"></div>
+
+    <!-- ES Module integrating Motion Library -->
+    <script type="module">
+        import { animate, stagger, spring } from "https://cdn.jsdelivr.net/npm/motion@12.36.0/+esm";
+
+        // Make globally available
+        window.animate = animate;
+
+        // --- PAGE ROUTING LOGIC (SPA) ---
+        const pageData = {
+            'overview': { title: 'Identity Overview', subtitle: 'Manage your personal information and quick stats.' },
+            'integrations': { title: 'Integrations', subtitle: 'Link external apps for faster and secure login.' },
+            'security': { title: 'Security', subtitle: 'Protect your account and manage your credentials.' },
+            'sessions': { title: 'Active Sessions', subtitle: 'Manage and revoke devices currently logged into your account.' },
+            'activity': { title: 'Activity Log', subtitle: 'A detailed history of security events and logins on your account.' },
+            'settings': { title: 'Preferences', subtitle: 'Manage data exports and destructive actions.' }
+        };
+
+        let currentPage = null;
+        let isAnimating = false;
+
+        // Active indicator logic
+        function updateActiveIndicator(link) {
+            const indicator = document.getElementById('active-indicator');
+            if(!indicator || !link) return;
+            
+            const isCollapsed = document.getElementById('sidebar').classList.contains('sidebar-collapsed');
+            
+            const rect = link.getBoundingClientRect();
+            const parentRect = link.parentElement.getBoundingClientRect();
+            
+            // Calculate relative top position
+            const topPos = rect.top - parentRect.top;
+            
+            animate(indicator, { 
+                top: `${topPos}px`, 
+                height: `${rect.height}px`,
+                opacity: isCollapsed ? 0 : 1 // hide pill when collapsed for cleaner look
+            }, { 
+                type: "spring", stiffness: 400, damping: 30 
+            });
+        }
+
+        window.switchPage = async function(pageId) {
+            if (currentPage === pageId || isAnimating) return;
+            isAnimating = true;
+
+            let targetLink = null;
+
+            // Update Sidebar UI styling
+            document.querySelectorAll('.nav-link').forEach(link => {
+                const icon = link.querySelector('.nav-icon');
+                if(link.getAttribute('data-page') === pageId) {
+                    targetLink = link;
+                    link.classList.add('bg-zinc-200/50', 'dark:bg-white/10', 'text-zinc-900', 'dark:text-zinc-100');
+                    link.classList.remove('text-zinc-500', 'dark:text-zinc-400', 'hover:bg-zinc-100', 'dark:hover:bg-white/5', 'hover:text-zinc-900', 'dark:hover:text-zinc-100');
+                    if(icon) icon.classList.replace('ph', 'ph-fill');
+                } else {
+                    link.classList.remove('bg-zinc-200/50', 'dark:bg-white/10', 'text-zinc-900', 'dark:text-zinc-100');
+                    link.classList.add('text-zinc-500', 'dark:text-zinc-400', 'hover:bg-zinc-100', 'dark:hover:bg-white/5', 'hover:text-zinc-900', 'dark:hover:text-zinc-100');
+                    if(icon) icon.classList.replace('ph-fill', 'ph');
+                }
+            });
+
+            if(window.innerWidth >= 768) {
+                updateActiveIndicator(targetLink);
+            }
+
+            const titleEl = document.getElementById('page-title');
+            const subtitleEl = document.getElementById('page-subtitle');
+            const newPage = document.getElementById(`page-${pageId}`);
+            const currentEl = currentPage ? document.getElementById(`page-${currentPage}`) : null;
+
+            // 1. Animate Out
+            if (currentEl) {
+                animate(titleEl, { opacity: 0, y: -10 }, { duration: 0.15 });
+                animate(subtitleEl, { opacity: 0, y: -10 }, { duration: 0.15 });
+                await animate(currentEl, { opacity: 0, y: 15, filter: "blur(4px)", scale: 0.98 }, { duration: 0.25 }).finished;
+                
+                currentEl.style.display = 'none';
+                currentEl.style.filter = "none";
+            }
+
+            // Scroll to top
+            document.querySelector('main').scrollTo(0, 0);
+
+            // Update Text
+            titleEl.textContent = pageData[pageId].title;
+            subtitleEl.textContent = pageData[pageId].subtitle;
+
+            // 2. Prepare new page
+            currentPage = pageId;
+            newPage.style.display = 'block';
+            const items = newPage.querySelectorAll('.stagger-item');
+            
+            animate(newPage, { opacity: 0, y: 20, scale: 0.98 }, { duration: 0 });
+            if (items.length) {
+                animate(items, { opacity: 0, y: 25 }, { duration: 0 });
+            }
+
+            // 3. Animate In (Spring)
+            animate(titleEl, { opacity: 1, y: [10, 0] }, { duration: 0.4, easing: "ease-out" });
+            animate(subtitleEl, { opacity: 1, y: [10, 0] }, { duration: 0.4, easing: "ease-out" });
+            animate(newPage, { opacity: 1, y: 0, scale: 1 }, { type: "spring", stiffness: 200, damping: 20 });
+            
+            if (items.length) {
+                animate(items, { opacity: 1, y: 0 }, {
+                    delay: stagger(0.06),
+                    type: "spring", stiffness: 300, damping: 25
+                });
+            }
+
+            // Close Mobile Menu if open
+            if(window.innerWidth < 768) window.toggleMenu(true);
+
+            isAnimating = false;
+        };
+
+        // Attach clicks
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.switchPage(link.getAttribute('data-page'));
+            });
+        });
+
+        // Init
+        window.addEventListener('DOMContentLoaded', () => {
+            window.switchPage('overview');
+            
+            // Set initial active indicator position on desktop
+            setTimeout(() => {
+                if(window.innerWidth >= 768) {
+                    const activeLink = document.querySelector('.nav-link.bg-zinc-200\\/50') || document.querySelector('.nav-link.dark\\:bg-white\\/10');
+                    if(activeLink) updateActiveIndicator(activeLink);
+                }
+            }, 100);
+        });
+
+        // --- TOAST NOTIFICATION ---
+        const toastContainer = document.getElementById('toast-container');
+        window.showToast = function(message, type = 'success') {
+            const toast = document.createElement('div');
+            // iOS pill style toast
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-[16px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] border backdrop-blur-3xl pointer-events-auto bg-white/90 dark:bg-[#1C1C1E]/90 border-zinc-200/50 dark:border-white/10 origin-bottom transform translate-y-8 opacity-0 scale-95 max-w-sm w-full sm:w-auto`;
+            
+            let iconBox = '';
+            if (type === 'success') {
+                iconBox = `<div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0"><i class="ph-bold ph-check text-sm"></i></div>`;
+            } else if (type === 'info') {
+                iconBox = `<div class="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0"><i class="ph-bold ph-info text-sm"></i></div>`;
+            } else if (type === 'error') {
+                iconBox = `<div class="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0"><i class="ph-bold ph-warning text-sm"></i></div>`;
+            }
+
+            toast.innerHTML = `
+                ${iconBox}
+                <p class="text-[14px] font-semibold text-zinc-900 dark:text-zinc-100 mr-2">${message}</p>
+                <button class="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors ml-auto" onclick="this.parentElement.remove()"><i class="ph-bold ph-x text-lg"></i></button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Pop in
+            animate(toast, { opacity: [0, 1], y: [20, 0], scale: [0.95, 1] }, { type: "spring", stiffness: 400, damping: 25 });
+            
+            // Fade out
+            setTimeout(() => {
+                if(toast.parentElement) {
+                    animate(toast, { opacity: 0, scale: 0.95, y: -10 }, { duration: 0.25 })
+                        .finished.then(() => toast.remove());
+                }
+            }, 3500);
+        };
+
+        // --- BUTTON INTERACTIONS ---
+        
+        // Connect Apps (with dynamic badge)
+        let activeIntegrations = 3;
+        const integrationsBadge = document.getElementById('badge-integrations');
+        
+        document.querySelectorAll('.btn-connect').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const isConnected = btn.classList.contains('connected-state');
+                const provider = btn.getAttribute('data-provider');
+                const textSpan = btn.querySelector('.btn-text');
+                const statusText = btn.parentElement.querySelector('.status-text');
+                
+                animate(btn, { scale: [1, 0.95, 1] }, { duration: 0.2 });
+                
+                btn.disabled = true;
+                textSpan.innerHTML = `<i class="ph-bold ph-spinner animate-spin-slow"></i>`;
+                
+                setTimeout(() => {
+                    btn.disabled = false;
+                    if (isConnected) {
+                        btn.classList.remove('connected-state', 'bg-zinc-100', 'dark:bg-white/10', 'text-red-500', 'hover:bg-red-50', 'dark:hover:bg-red-500/20');
+                        btn.classList.add('text-indigo-600', 'dark:text-indigo-400', 'bg-zinc-100', 'dark:bg-white/10', 'hover:bg-zinc-200', 'dark:hover:bg-white/20');
+                        textSpan.textContent = 'Connect';
+                        statusText.textContent = 'Not linked';
+                        window.showToast(`Disconnected ${provider}`, 'info');
+                        activeIntegrations--;
+                    } else {
+                        btn.classList.remove('text-indigo-600', 'dark:text-indigo-400', 'hover:bg-zinc-200', 'dark:hover:bg-white/20');
+                        btn.classList.add('connected-state', 'bg-zinc-100', 'dark:bg-white/10', 'text-red-500', 'hover:bg-red-50', 'dark:hover:bg-red-500/20');
+                        textSpan.textContent = 'Disconnect';
+                        statusText.textContent = `Connected`;
+                        window.showToast(`Connected to ${provider}`, 'success');
+                        activeIntegrations++;
+                    }
+                    
+                    // Update badges
+                    if(integrationsBadge) integrationsBadge.textContent = activeIntegrations;
+                    animate(integrationsBadge, { scale: [1, 1.3, 1] }, { type: "spring" });
+                }, 500);
+            });
+        });
+
+        // 2FA Toggle switch
+        const toggle2fa = document.getElementById('toggle-2fa');
+        const recoveryCodes = document.getElementById('recovery-codes');
+        if(toggle2fa) {
+            toggle2fa.addEventListener('change', (e) => {
+                if(e.target.checked) {
+                    window.showToast('2FA Enabled successfully', 'success');
+                    recoveryCodes.classList.remove('hidden');
+                    animate(recoveryCodes, { opacity: [0, 1], y: [-10, 0] }, { duration: 0.3 });
+                } else {
+                    window.showToast('2FA Disabled', 'info');
+                    animate(recoveryCodes, { opacity: 0, y: -10 }, { duration: 0.2 }).finished.then(()=> {
+                        recoveryCodes.classList.add('hidden');
+                    });
+                }
+            });
+        }
+
+        // Revoke Session (Dynamic Height animation)
+        let activeSessions = 2;
+        const sessionsBadge = document.getElementById('badge-sessions');
+        const dashSessionCount = document.getElementById('dash-session-count');
+        const btnRevokeAll = document.getElementById('btn-revoke-all');
+        const emptyState = document.getElementById('sessions-empty');
+        const listContainer = document.getElementById('sessions-list-container');
+
+        document.querySelectorAll('.btn-revoke').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const item = e.target.closest('.session-item');
+                const span = btn.querySelector('span');
+                
+                span.innerHTML = `<i class="ph-bold ph-spinner animate-spin-slow"></i>`;
+                
+                await new Promise(r => setTimeout(r, 600));
+                
+                await animate(item, { 
+                    opacity: 0, 
+                    x: 30, 
+                    height: 0, 
+                    paddingTop: 0, 
+                    paddingBottom: 0,
+                    margin: 0
+                }, { 
+                    duration: 0.35, 
+                    easing: "ease-in-out" 
+                }).finished;
+
+                item.remove();
+                window.showToast('Revoked iOS Session', 'info');
+                
+                // Update stats
+                activeSessions--;
+                if(sessionsBadge) sessionsBadge.textContent = activeSessions;
+                if(dashSessionCount) dashSessionCount.textContent = activeSessions;
+                
+                // Show empty state if only 1 session (current) left
+                if(activeSessions === 1) {
+                    if(btnRevokeAll) btnRevokeAll.style.display = 'none';
+                    if(emptyState) {
+                        emptyState.classList.remove('hidden');
+                        emptyState.classList.add('flex');
+                        animate(emptyState, { opacity: [0,1], scale: [0.9, 1] }, { duration: 0.4 });
+                    }
+                }
+            });
+        });
+
+        // Delete Account
+        const btnDelete = document.getElementById('btn-delete');
+        if(btnDelete) {
+            btnDelete.addEventListener('click', () => {
+                animate(btnDelete, { scale: [1, 0.95, 1] }, { duration: 0.2 });
+                btnDelete.innerHTML = `<i class="ph-bold ph-spinner animate-spin-slow text-lg"></i> Processing`;
+                setTimeout(() => {
+                    btnDelete.innerHTML = `<i class="ph-bold ph-trash text-lg"></i> Delete Account`;
+                    window.showToast('Check email to confirm deletion', 'error');
+                }, 1000);
+            });
+        }
+
+        // --- PASSWORD STRENGTH METER ---
+        const pwdInput = document.getElementById('new-password');
+        const pwdMeter = document.getElementById('pwd-meter');
+        const pwdText = document.getElementById('pwd-text');
+        
+        if(pwdInput) {
+            pwdInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                let strength = 0;
+                
+                if (val.length > 0) strength += 1;
+                if (val.length >= 8) strength += 1;
+                if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength += 1;
+                if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) strength += 1;
+
+                switch(strength) {
+                    case 0:
+                        pwdMeter.style.width = '0%';
+                        pwdText.textContent = "Use 8+ characters, a mix of letters, numbers & symbols.";
+                        break;
+                    case 1:
+                        pwdMeter.style.width = '25%';
+                        pwdMeter.className = 'h-full transition-all duration-300 bg-red-500';
+                        pwdText.textContent = "Weak password.";
+                        break;
+                    case 2:
+                        pwdMeter.style.width = '50%';
+                        pwdMeter.className = 'h-full transition-all duration-300 bg-orange-500';
+                        pwdText.textContent = "Fair password. Add uppercase or symbols.";
+                        break;
+                    case 3:
+                        pwdMeter.style.width = '75%';
+                        pwdMeter.className = 'h-full transition-all duration-300 bg-yellow-500';
+                        pwdText.textContent = "Good password. Add symbols to make it strong.";
+                        break;
+                    case 4:
+                        pwdMeter.style.width = '100%';
+                        pwdMeter.className = 'h-full transition-all duration-300 bg-emerald-500';
+                        pwdText.textContent = "Strong password!";
+                        break;
+                }
+            });
+        }
+
+        // --- SIDEBAR COLLAPSE (Desktop) ---
+        const collapseBtn = document.getElementById('collapse-btn');
+        if(collapseBtn) {
+            collapseBtn.addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('sidebar-collapsed');
+                
+                const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+                
+                // Toggle logo
+                document.getElementById('logo-icon-only').classList.toggle('hidden', !isCollapsed);
+                
+                // Update indicator
+                const activeLink = document.querySelector('.nav-link.bg-zinc-200\\/50') || document.querySelector('.nav-link.dark\\:bg-white\\/10');
+                if(activeLink) updateActiveIndicator(activeLink);
+            });
+        }
+
+        // --- MOBILE SIDEBAR TOGGLE ---
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+
+        window.toggleMenu = function(forceClose = false) {
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            if (isClosed && !forceClose) {
+                sidebar.classList.remove('-translate-x-full');
+                mobileOverlay.classList.remove('hidden');
+                animate(mobileOverlay, { opacity: [0, 1] }, { duration: 0.3 });
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                animate(mobileOverlay, { opacity: [1, 0] }, { duration: 0.3 }).finished.then(() => {
+                    mobileOverlay.classList.add('hidden');
+                });
+            }
+        };
+
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => window.toggleMenu());
+        document.getElementById('close-mobile-menu').addEventListener('click', () => window.toggleMenu(true));
+        mobileOverlay.addEventListener('click', () => window.toggleMenu(true));
+
+        // --- THEME ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const htmlElement = document.documentElement;
+
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+            themeIcon.classList.replace('ph-moon', 'ph-sun');
+        } else {
+            htmlElement.classList.remove('dark');
+            themeIcon.classList.replace('ph-sun', 'ph-moon');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            animate(themeIcon, { rotate: [0, 180], scale: [0.8, 1.2, 1] }, { duration: 0.4 });
+            htmlElement.classList.toggle('dark');
+            if (htmlElement.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+                themeIcon.classList.replace('ph-sun', 'ph-moon');
+            } else {
+                localStorage.theme = 'light';
+                themeIcon.classList.replace('ph-moon', 'ph-sun');
+            }
+        });
+        
+    </script>
+    
+    <!-- Timezone Auto-Detect Clock Script -->
+    <script>
+        function updateTime() {
+            const timeEl = document.getElementById('live-time');
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            let seconds = now.getSeconds();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            seconds = seconds < 10 ? '0' + seconds : seconds;
+            
+            // Auto detect timezone abbreviation
+            const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            let tzAbbr = "Local";
+            if(tzName.includes('Dhaka')) tzAbbr = "BDT";
+            else if(tzName.includes('New_York')) tzAbbr = "EST";
+            else if(tzName.includes('London')) tzAbbr = "GMT";
+            // Simple fallback logic to extract a shortname
+            else tzAbbr = tzName.split('/')[1]?.substring(0,3).toUpperCase() || "Local";
+            
+            timeEl.textContent = `${hours}:${minutes}:${seconds} ${ampm} ${tzAbbr}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+    </script>
+</body>
+</html>
